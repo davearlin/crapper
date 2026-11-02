@@ -1,4 +1,6 @@
 import json
+import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -502,7 +504,8 @@ def test_an_argument_vector_is_not_a_shell(tmp_path, monkeypatch):
 
 def test_an_argument_vector_cannot_run_a_second_command(tmp_path):
     marker = tmp_path / "pwned"
-    assert run_shell(["true", f"a;touch {marker}"], tmp_path) == 0
+    chained = f"a & type nul > {marker}" if os.name == "nt" else f"a;touch {marker}"
+    assert run_shell([sys.executable, "-c", "pass", chained], tmp_path) == 0
     assert not marker.exists()
 
 
