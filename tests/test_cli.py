@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -52,7 +53,7 @@ def _git_status(root: Path, status: str):
     return fake
 
 
-def test_project_snapshot_is_readable_as_crap4clj_edn(tmp_path):
+def _polyglot_snapshot(tmp_path: Path) -> str:
     _write(
         tmp_path,
         "src/demo/core.clj",
@@ -84,7 +85,11 @@ def test_project_snapshot_is_readable_as_crap4clj_edn(tmp_path):
 
     code = run(["--root", str(tmp_path), "--no-coverage"])
     assert code == 0
-    text = (tmp_path / ".metrics" / "crap.edn").read_text(encoding="utf-8")
+    return (tmp_path / ".metrics" / "crap.edn").read_text(encoding="utf-8")
+
+
+def test_project_snapshot_names_every_language(tmp_path):
+    text = _polyglot_snapshot(tmp_path)
     assert ':namespace "demo.core"' in text
     assert ':name "choose"' in text
     assert ':namespace "demo.Board"' in text
@@ -95,6 +100,10 @@ def test_project_snapshot_is_readable_as_crap4clj_edn(tmp_path):
     assert "should-skip" not in text
     assert "TestPlace" not in text
 
+
+@pytest.mark.skipif(shutil.which("bb") is None, reason="needs babashka (bb)")
+def test_project_snapshot_is_readable_as_crap4clj_edn(tmp_path):
+    text = _polyglot_snapshot(tmp_path)
     reader = subprocess.run(
         [
             "bb",
@@ -378,10 +387,11 @@ def test_changed_outside_a_repository_returns_gits_status(tmp_path, capsys):
     assert captured.err.strip()
 
 
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="the uml loader is a zsh script")
 def test_uml_loader_rejects_a_missing_viewer(tmp_path):
     script = Path(__file__).resolve().parents[1] / "uml"
     completed = subprocess.run(
-        [str(script)],
+        ["zsh", str(script)],
         env={**os.environ, "UML_VIEWER_ROOT": str(tmp_path / "missing")},
         capture_output=True,
         text=True,
